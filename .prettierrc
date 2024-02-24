@@ -1,0 +1,5 @@
+{
+  "--experimental-ternaries": true,
+  "printWidth": 80,
+  "--use-tabs": true
+}
