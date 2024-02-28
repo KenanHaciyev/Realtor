@@ -1,8 +1,6 @@
-import Home from "./Home";
-import Profile from "./Profile";
-import Offers from "./Offers";
-import SignIn from "./SignIn";
-import SignUp from "./SignUp";
-import ForgotPassword from "./ForgotPassword";
-
-export { Home, Profile, Offers, SignIn, SignUp, ForgotPassword };
+export { Home } from "./Home";
+export { Profile } from "./Profile";
+export { Offers } from "./Offers";
+export { SignIn } from "./SignIn";
+export { SignUp } from "./SignUp";
+export { ForgotPassword } from "./ForgotPassword";
