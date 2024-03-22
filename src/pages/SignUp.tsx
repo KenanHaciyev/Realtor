@@ -1,16 +1,71 @@
-import React from "react";
-import { useReactive } from "ahooks";
-import { ISignInInputs, IState } from "../shared/models";
+import React, { BaseSyntheticEvent } from "react";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
+import { useReactive } from "ahooks";
+import * as yup from "yup";
+import { string } from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { ISignInInputs, IState } from "../shared/models";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { OAuth } from "../components";
+import { auth, db } from "../firebase";
 
 export const SignUp = () => {
   const state: IState = useReactive({
     showPassword: false,
   });
-  const { register } = useForm<ISignInInputs>();
+
+  const userSchema = yup.object().shape({
+    name: string().required(),
+    email: string().email().required("Email address is required"),
+    password: string().required().min(6),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors },
+  } = useForm<ISignInInputs>({
+    resolver: yupResolver(userSchema) as any,
+  });
+
+  const navigate = useNavigate();
+
+  const onSubmit = async (
+    data: ISignInInputs,
+    e: BaseSyntheticEvent | undefined,
+  ) => {
+    e?.preventDefault();
+
+    try {
+      const { email, password, name } = getValues();
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password!,
+      );
+
+      updateProfile(auth.currentUser!, {
+        displayName: name,
+      });
+
+      const user = userCredential.user;
+      const formDataCopy = { ...getValues() };
+      delete formDataCopy.password;
+      formDataCopy.timestamp = serverTimestamp();
+
+      await setDoc(doc(db, "users", user.uid), formDataCopy);
+      navigate("/");
+
+      toast.success("Sign up was successful");
+    } catch (e) {
+      toast.error("Something went wrong");
+    }
+  };
 
   return (
     <section>
@@ -24,33 +79,38 @@ export const SignUp = () => {
           />
         </div>
         <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-          <form>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <input
-              className="mb-6 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
+              className="mb-3 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
               type="name"
               id="name"
               placeholder={"Full name"}
               {...register("name")}
             />
+            <small style={{ color: "crimson" }}>{errors.name?.message}</small>
 
             <input
-              className="mb-6 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
+              className="mb-3 mt-3 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
               type="email"
               id="email"
               placeholder={"Email address"}
               {...register("email")}
             />
+            <small style={{ color: "crimson" }}>{errors.email?.message}</small>
 
             <div className={"relative mb-6"}>
               <input
-                className="mb-6 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
+                className="mb-3 mt-3 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
                 type={state.showPassword ? "text" : "password"}
                 id="password"
                 placeholder={"Your password"}
                 {...register("password")}
               />
+              <small style={{ color: "crimson" }}>
+                {errors.password?.message}
+              </small>
               <div
-                className="absolute right-3 top-3 text-xl cursor-pointer"
+                className="absolute right-3 top-6 text-xl cursor-pointer"
                 onClick={() => (state.showPassword = !state.showPassword)}
               >
                 {state.showPassword ? <FaEye /> : <FaEyeSlash />}
@@ -88,8 +148,8 @@ export const SignUp = () => {
             <div className="flex items-center  my-4 before:border-t before:flex-1 before:border-gray-300 after:border-t after:flex-1 after:border-gray-300">
               <p className="text-center font-semibold mx-4">OR</p>
             </div>
+            <OAuth />
           </form>
-          <OAuth />
         </div>
       </div>
     </section>
